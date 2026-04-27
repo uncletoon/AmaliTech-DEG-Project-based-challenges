@@ -1,7 +1,7 @@
 from celery.result import AsyncResult
 from django.utils import timezone
 
-from monitor.models import Monitor
+from monitor.models import Monitor, HeartbeatLog
 from monitor.tasks import mark_monitor_down
 
 
@@ -37,6 +37,12 @@ def create_monitor(validated_data):
 
 def handle_heartbeat(monitor_id):
     monitor = Monitor.objects.get(id=monitor_id)
+
+    HeartbeatLog.objects.create(
+        monitor = monitor,
+        status_before = monitor.status,
+        note = "Heartbeat Received !!"
+    )
 
     cancel_timer(monitor)
 
