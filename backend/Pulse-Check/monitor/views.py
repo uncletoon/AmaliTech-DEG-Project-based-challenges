@@ -3,8 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
-from .models import Monitor
-from .serializers import MonitorSerializer
+from .models import Monitor, HeartbeatLog
+from .serializers import MonitorSerializer, HeartbeatLogSerializer
 from .services.monitor_services import (
     create_monitor,
     handle_heartbeat,
@@ -54,3 +54,13 @@ class MonitorViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK
         )
+    
+    @action(detail=True, methods=["get"])
+    def heartbeats(self, request, pk=None):
+        monitor = get_object_or_404(Monitor, id=pk)
+
+        logs = HeartbeatLog.objects.filter(monitor=monitor).order_by("-timestamp")[:10]
+
+        serializer = HeartbeatLogSerializer(logs, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
