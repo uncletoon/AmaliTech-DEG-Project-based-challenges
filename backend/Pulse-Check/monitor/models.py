@@ -18,3 +18,12 @@ class Monitor(models.Model):
 
     def __str__(self):
         return f" Device ID: {self.id}, STATUS: {self.status}"
+
+class HeartbeatLog(models.Model):
+    monitor =models.ForeignKey(Monitor, on_delete=models.CASCADE, related_name="heartbeat_logs")
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status_before = models.CharField(max_length=20)
+    note = models.CharField(max_length=255, default="Heartbeat Received!")
+
+    def __str__(self):
+        return f"{self.monitor.id} - {self.timestamp}"
