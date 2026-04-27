@@ -1,9 +1,16 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.utils import timezone
+from django.shortcuts import get_object_or_404
+
 from .models import Monitor
 from .serializers import MonitorSerializer
+from .services.monitor_services import (
+    create_monitor,
+    handle_heartbeat,
+    pause_monitor,
+)
+
 
 class MonitorViewSet(viewsets.ModelViewSet):
     queryset = Monitor.objects.all()
@@ -12,27 +19,38 @@ class MonitorViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        monitor = serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'])
+        monitor = create_monitor(serializer.validated_data)
+
+        return Response(
+            self.get_serializer(monitor).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=["post"])
     def heartbeat(self, request, pk=None):
-        try:
-            monitor = self.get_object()
-        except Monitor.DoesNotExist:
-            return Response({"error": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
-        
-        monitor.status = 'active'
-        monitor.last_heartbeat = timezone.now()
-        monitor.save()
-        
-        return Response({"message": "Heartbeat received"}, status=status.HTTP_200_OK)
+        get_object_or_404(Monitor, id=pk)
 
-    @action(detail=True, methods=['post'])
+        monitor = handle_heartbeat(pk)
+
+        return Response(
+            {
+                "message": "Heartbeat received",
+                "monitor": self.get_serializer(monitor).data,
+            },
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=["post"])
     def pause(self, request, pk=None):
-        monitor = self.get_object()
-                
-        monitor.status = 'paused'
-        monitor.save()
-        
-        return Response({"message": "Monitor paused"}, status=status.HTTP_200_OK)
+        get_object_or_404(Monitor, id=pk)
+
+        monitor = pause_monitor(pk)
+
+        return Response(
+            {
+                "message": "Monitor paused",
+                "monitor": self.get_serializer(monitor).data,
+            },
+            status=status.HTTP_200_OK
+        )
